@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manchester United Performance Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Custom styles for the app */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            overflow-x: hidden;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes modalFadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes modalScaleIn {
+            from { transform: scale(0.95); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .modal-fade-in {
+            animation: modalFadeIn 0.3s ease-out forwards;
+        }
+        .modal-scale-in {
+            animation: modalScaleIn 0.3s ease-out forwards;
+        }
+
+        .backdrop-filter-blur {
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px); /* Safari support */
+        }
+        .text-shadow-red {
+            color: #FFFFFF;
+            text-shadow: 2px 2px 4px #DA291C, 0 0 8px rgba(218, 41, 28, 0.5);
+        }
+        .text-shadow-red-modal {
+            text-shadow: 1px 1px 4px #DA291C, 0 0 6px rgba(218, 41, 28, 0.5);
+        }
+        .title-performance { /* New class for the main title */
+            color: #FFFFFF;
+            text-align: center; /* Centered */
+            font-weight: 700;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7), 0 0 8px rgba(0, 0, 0, 0.5);
+        }
+        .subtitle-games { /* New class for "First 8 Games" */
+            color: #FFD700; /* Yellow color */
+            font-family: 'Playfair Display', serif; /* Elegant serif font */
+            font-size: 0.9em; /* Slightly larger than original subtitle */
+            opacity: 1; /* Fully opaque */
+            text-align: center; /* Centered */
+            font-weight: 700;
+            text-shadow: 0 0 5px #FFD700, 0 0 10px rgba(255, 215, 0, 0.5); /* Enhanced glowing effect */
+        }
+        .player-info-container { /* New container for image + name + hint */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px; /* Space between image and text */
+        }
+        .player-name { /* New class for player names */
+            color: #FFFFFF; /* White color for names */
+            font-family: 'Inter', sans-serif; /* Bold, modern font for names */
+            font-size: 0.8em; /* Slightly smaller than main text for hierarchy */
+            text-align: center;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+            font-weight: bold;
+        }
+        .player-cutout {
+            border: 2px solid #DA291C;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            transition: transform 0.3s ease;
+            width: 80px; /* Increased size */
+            height: 80px; /* Increased size */
+            object-fit: cover;
+            cursor: pointer;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        .player-cutout:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 10px rgba(218, 41, 28, 0.7); /* Red glow on hover */
+        }
+        .player-hint-text {
+            color: #FFD700; /* Yellow text color */
+            font-family: 'Playfair Display', serif; /* Elegant serif font */
+            font-size: 0.7em; /* Small font size */
+            opacity: 0.9; /* Slightly more opaque */
+            text-shadow: 0 0 5px #FFD700, 0 0 10px rgba(255, 215, 0, 0.5); /* Enhanced glowing effect */
+            margin-top: 4px; /* Small margin from image */
+            text-align: center;
+            font-weight: 700; /* Bold the text for more prominence */
+        }
+        .toggle-button {
+            background-color: #000000; /* Black background */
+            color: #FFFFFF;
+            border: 2px solid #DA291C; /* Red border */
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+        }
+        .toggle-button:hover {
+            background-color: #DA291C; /* Red on hover */
+            color: #FFFFFF;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white flex items-center justify-center min-h-screen">
+
+    <div id="root" class="relative min-h-screen w-full flex flex-col items-center justify-center p-4 overflow-hidden"
+         style="
+             background: conic-gradient(from 45deg at 50% 50%, #DA291C 0deg, #000000 180deg, #DA291C 360deg), linear-gradient(135deg, rgba(218, 41, 28, 0.9) 0%, rgba(0, 0, 0, 0.8) 100%);
+             background-image: url('https://upload.wikimedia.org/wikipedia/en/thumb/7/7a/Manchester_United_FC_crest.svg/1200px-Manchester_United_FC_crest.svg.png');
+             background-size: 40% auto, cover;
+             background-position: center, center;
+             background-repeat: no-repeat, no-repeat;
+             background-blend-mode: overlay, normal;
+             font-family: 'Inter', sans-serif;
+             animation: fadeIn 0.5s ease-in-out;
+         ">
+
+        <div class="w-full h-full absolute top-0 left-0 backdrop-filter-blur z-0"></div>
+
+        <div class="relative z-10 w-full max-w-4xl bg-black bg-opacity-75 rounded-2xl p-8 shadow-3xl flex flex-col items-center border border-gray-800"
+             style="box-shadow: 0 0 30px rgba(218, 41, 28, 0.6), 0 0 60px rgba(0, 0, 0, 0.8) inset;">
+            <!-- Manchester United Statement -->
+            <p class="text-xl sm:text-2xl font-bold mb-2 text-center text-shadow-red animate-fadeIn leading-snug">
+                Manchester United reaching +24 points for the first 8 games of Premier League will boost confidence leading to matchday 19 marking half the season.
+            </p>
+
+            <!-- Main title: Manchester United Performance -->
+            <h1 class="text-3xl sm:text-4xl lg:text-5xl font-extrabold mt-4 mb-2 title-performance animate-fadeIn leading-tight">
+                Manchester United 2025/26 Premier League Metrics
+            </h1>
+            <!-- Subtitle: (First 8 Games) -->
+            <p class="subtitle-games mb-8 animate-fadeIn">
+                (First 8 Games)
+            </p>
+
+            <div class="w-full h-[450px] sm:h-[550px] md:h-[650px] relative">
+                <canvas id="manutdChart"></canvas>
+                <!-- Player Cut-Outs -->
+                <div class="absolute left-4 top-[18%] flex flex-col items-center player-info-container">
+                    <img
+                        src="https://i2-prod.manchestereveningnews.co.uk/article32248269.ece/ALTERNATES/s615/0_GettyImages-2229521692.jpg"
+                        alt="Benjamin Sesko"
+                        class="player-cutout"
+                        onclick="showMessage('Benjamin Sesko', '8 Goals, 3 Assists in 8 games.')"
+                        onerror="this.onerror=null;this.src='https://placehold.co/80x80/DA291C/FFFFFF?text=Sesko';"
+                    />
+                    <span class="player-name">Benjamin Sesko</span>
+                    <p class="player-hint-text">Click for stats</p>
+                </div>
+                <div class="absolute right-4 bottom-[18%] flex flex-col items-center player-info-container">
+                    <img
+                        src="https://www.playmakerstats.com/wimg/n658193b/1158478-bruno-fernandes-signs-new-man-utd-contract.jpg"
+                        alt="Bruno Fernandes"
+                        class="player-cutout"
+                        onclick="showMessage('Bruno Fernandes', '5 Assists, 2 Goals in 8 games.')"
+                        onerror="this.onerror=null;this.src='https://placehold.co/80x80/DA291C/FFFFFF?text=Bruno';"
+                    />
+                    <span class="player-name">Bruno Fernandes</span>
+                    <p class="player-hint-text">Click for stats</p>
+                </div>
+            </div>
+
+            <button
+                class="toggle-button mt-8"
+                id="toggleComparisonButton"
+            >
+                Compare with Rivals
+            </button>
+            <p id="comparisonHint" class="text-[#E0E0E0] mt-4 text-center text-sm hidden">
+                *Rival comparison feature: This functionality would dynamically load and display league average or rival team data (e.g., Manchester City) for direct comparison. This is a placeholder; actual implementation requires additional data and Chart.js dataset manipulation.
+            </p>
+        </div>
+
+        <!-- Message Modal HTML -->
+        <div id="messageModal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 hidden modal-fade-in">
+            <div class="bg-[#0A0A0A] p-6 rounded-xl shadow-2xl max-w-sm mx-4 border-2 border-[#DA291C] relative transform scale-95 modal-scale-in"
+                 style="
+                     font-family: 'Inter', sans-serif;
+                     box-shadow: 0 0 20px rgba(218, 41, 28, 0.5);
+                 ">
+                <button
+                    class="absolute top-3 right-3 text-[#FFFFFF] text-3xl font-bold p-2 rounded-full hover:bg-[#DA291C] transition-all duration-300 ease-in-out z-10"
+                    onclick="hideMessage()"
+                >
+                    &times;
+                </button>
+                <h3 id="modalTitle" class="text-2xl font-bold mb-4 text-[#FFFFFF] text-center text-shadow-red-modal"></h3>
+                <p id="modalContent" class="text-[#E0E0E0] mb-6 text-lg leading-relaxed"></p>
+                <button
+                    class="w-full bg-[#DA291C] text-[#FFFFFF] font-bold py-3 px-6 rounded-lg hover:bg-[#FF4C3B] transition-all duration-300 ease-in-out shadow-lg transform hover:scale-105"
+                    style="text-shadow: 1px 1px 3px rgba(0,0,0,0.4);"
+                    onclick="hideMessage()"
+                >
+                    Dismiss
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Define the data for the metrics
+        const metricsData = {
+            labels: ['Goals Scored', 'Goals Conceded', 'Possession Percentage', 'Shots on Target per Game', 'Assists'],
+            datasets: [{
+                label: 'Manchester United Performance (First 8 Games)',
+                data: [18, 6, 58, 5.5, 12],
+                backgroundColor: 'rgba(218, 41, 28, 0.7)',
+                borderColor: '#DA291C',
+                pointBackgroundColor: [
+                    '#FFD700',
+                    '#FFFFFF',
+                    '#FFFFFF',
+                    '#FFFFFF',
+                    '#FFD700'
+                ],
+                pointBorderColor: [
+                    '#DA291C',
+                    '#000000',
+                    '#000000',
+                    '#000000',
+                    '#DA291C'
+                ],
+                pointHoverBackgroundColor: [
+                    '#FFFFFF',
+                    '#FF4C3B',
+                    '#FF4C3B',
+                    '#FF4C3B',
+                    '#FFFFFF'
+                ],
+                pointHoverBorderColor: [
+                    '#FFD700',
+                    '#DA291C',
+                    '#DA291C',
+                    '#DA291C',
+                    '#FFD700'
+                ],
+                borderWidth: 2,
+                tension: 0.1,
+                pointRadius: [
+                    8, 6, 6, 6, 8
+                ],
+                pointHoverRadius: [
+                    10, 8, 8, 8, 10
+                ],
+                pointHitRadius: 10,
+                pointStyle: [
+                    'star',
+                    'circle', 'circle', 'circle',
+                    'star'
+                ]
+            }]
+        };
+
+        const metricDescriptions = {
+            'Goals Scored': 'Total goals scored by Manchester United in the first 8 games. A high number indicates strong attacking performance. Sesko is the top scorer with 8 goals!',
+            'Goals Conceded': 'Total goals conceded by Manchester United in the first 8 games. A low number emphasizes strong defensive strength and organization.',
+            'Possession Percentage': 'Average percentage of ball possession per game. Higher possession often correlates with control of the game and ability to dictate tempo.',
+            'Shots on Target per Game': 'Average number of shots on target taken per game. This metric reflects the team\'s attacking efficiency and consistent threat on the opponent\'s goal.',
+            'Assists': 'Total assists provided by Manchester United players in the first 8 games. Bruno Fernandes is the top assister with 5 assists, showcasing his playmaking brilliance!'
+        };
+
+        let chartInstance = null;
+        let showComparison = false;
+
+        function showMessage(title, content) {
+            document.getElementById('modalTitle').innerText = title;
+            document.getElementById('modalContent').innerText = content;
+            document.getElementById('messageModal').classList.remove('hidden');
+        }
+
+        function hideMessage() {
+            document.getElementById('messageModal').classList.add('hidden');
+        }
+
+        function createChart() {
+            const ctx = document.getElementById('manutdChart').getContext('2d');
+
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+
+            const chartAreaBgGradient = ctx.createLinearGradient(0, 0, 0, document.getElementById('manutdChart').height);
+            chartAreaBgGradient.addColorStop(0, 'rgba(218, 41, 28, 0.2)');
+            chartAreaBgGradient.addColorStop(0.5, 'rgba(0, 0, 0, 0.4)');
+            chartAreaBgGradient.addColorStop(1, 'rgba(218, 41, 28, 0.2)');
+
+            metricsData.datasets[0].backgroundColor = chartAreaBgGradient;
+
+            const chartOptions = {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    r: {
+                        angleLines: {
+                            color: 'rgba(255, 255, 255, 0.3)',
+                            lineWidth: 1
+                        },
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.2)',
+                            lineWidth: 1
+                        },
+                        pointLabels: {
+                            color: '#FFFFFF',
+                            font: {
+                                family: '"Inter", sans-serif',
+                                size: 16,
+                                weight: 'bold'
+                            },
+                            backdropColor: 'rgba(0,0,0,0.6)',
+                            backdropPadding: 6,
+                        },
+                        ticks: {
+                            beginAtZero: true,
+                            color: '#E0E0E0',
+                            backdropColor: 'rgba(0,0,0,0.7)',
+                            backdropPadding: { top: 4, left: 10, right: 10, bottom: 4 },
+                            font: {
+                                family: '"Inter", sans-serif',
+                                size: 14,
+                                weight: 'bold'
+                            },
+                            showLabelBackdrop: true,
+                            callback: function(value) {
+                               return value;
+                            }
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        labels: {
+                            color: '#FFFFFF',
+                            font: {
+                                family: '"Inter", sans-serif',
+                                size: 18,
+                                weight: 'bold'
+                            },
+                            padding: 20
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed.r !== null) {
+                                    label += context.parsed.r;
+                                }
+                                switch (context.label) {
+                                    case 'Goals Scored':
+                                        label += ' goals (Sesko: 8 goals)';
+                                        break;
+                                    case 'Goals Conceded':
+                                        label += ' goals';
+                                        break;
+                                    case 'Possession Percentage':
+                                        label += '%';
+                                        break;
+                                    case 'Shots on Target per Game':
+                                        label += ' shots';
+                                        break;
+                                    case 'Assists':
+                                        label += ' assists (Bruno: 5 assists)';
+                                        break;
+                                    default:
+                                        break;
+                                }
+                                return label;
+                            }
+                        },
+                        titleFont: { family: '"Inter", sans-serif', size: 18, weight: 'bold' },
+                        bodyFont: { family: '"Inter", sans-serif', size: 16 },
+                        backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                        titleColor: '#FF4C3B',
+                        bodyColor: '#FFFFFF',
+                        borderColor: '#DA291C',
+                        borderWidth: 2,
+                        displayColors: false,
+                        padding: 12,
+                        cornerRadius: 8
+                    }
+                },
+                onClick: (e, elements) => {
+                    if (elements.length > 0) {
+                        const clickedElementIndex = elements[0].index;
+                        const metricName = metricsData.labels[clickedElementIndex];
+                        const description = metricDescriptions[metricName];
+                        if (description) {
+                            showMessage(metricName, description);
+                        }
+                    }
+                }
+            };
+
+            chartInstance = new Chart(ctx, {
+                type: 'radar',
+                data: metricsData,
+                options: chartOptions,
+            });
+        }
+
+        function toggleComparisonMode() {
+            showComparison = !showComparison;
+            const button = document.getElementById('toggleComparisonButton');
+            const hint = document.getElementById('comparisonHint');
+            if (showComparison) {
+                button.innerText = 'Hide Rival Comparison';
+                hint.classList.remove('hidden');
+                // Placeholder for adding rival data
+                // This would involve adding another dataset to metricsData.datasets
+                // chartInstance.data.datasets.push({ /* rival dataset */ });
+                // chartInstance.update();
+            } else {
+                button.innerText = 'Compare with Rivals';
+                hint.classList.add('hidden');
+                // Placeholder for removing rival data
+                // chartInstance.data.datasets.pop(); // Assuming rival data is the last dataset
+                // chartInstance.update();
+            }
+        }
+
+        window.onload = function() {
+            createChart();
+            document.getElementById('toggleComparisonButton').addEventListener('click', toggleComparisonMode);
+        };
+
+        window.onresize = function() {
+            if (chartInstance) {
+                chartInstance.resize();
+            }
+        };
+    </script>
+</body>
+</html>
